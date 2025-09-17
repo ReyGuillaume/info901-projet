@@ -1,4 +1,5 @@
 from Mailbox import Mailbox
+from MessageTo import Message
 from Message import Message
 
 from pyeventbus3.pyeventbus3 import *
@@ -38,6 +39,10 @@ class Com():
     def sendToSync(self, message, dest):
         pass
 
+    @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageTo)
+    def receive(self, message):
+        self.mailbox.addMessage(message)
+        
     def recevFromSync(self, source):
         pass
 
