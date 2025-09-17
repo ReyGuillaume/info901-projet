@@ -1,20 +1,24 @@
 from Mailbox import Mailbox
 
 class Com():
+    NB_PROCESS = 0
+
     def __init__(self):
+        Com.NB_PROCESS += 1
+        
         self.lamport = 0
         self.mailbox = Mailbox()
 
     # Utils
 
-    def inc_clock():
-        pass
+    def inc_clock(self):
+        self.lamport += 1
     
     def getNbProcess():
-        return 1
+        return Com.NB_PROCESS
 
     def getMyId():
-        pass
+        return 0
 
     # Cast
 
@@ -27,7 +31,7 @@ class Com():
     def sendToSync(message, dest):
         pass
 
-    def recevFromSync():
+    def recevFromSync(source):
         pass
 
     def synchronize():

@@ -1,10 +1,10 @@
 class Message():
-    def __init__(self, sender, message):
+    def __init__(self, sender, payload):
         self.sender = sender
-        self.message = message
+        self.payload = payload
 
-    def getMessage(self):
-        return self.message
+    def getPayload(self):
+        return self.payload
 
     def getSender(self):
         return self.sender
