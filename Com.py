@@ -1,5 +1,7 @@
 from Mailbox import Mailbox
 
+from pyeventbus3.pyeventbus3 import *
+
 class Com():
     NB_PROCESS = 0
 
@@ -8,6 +10,8 @@ class Com():
         
         self.lamport = 0
         self.mailbox = Mailbox()
+
+        PyBus.Instance().register(self, self)
 
     # Utils
 
