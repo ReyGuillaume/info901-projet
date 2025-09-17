@@ -1,4 +1,5 @@
 from Mailbox import Mailbox
+from Message import Message
 
 from pyeventbus3.pyeventbus3 import *
 from Message import Message, MessageTo
@@ -7,8 +8,9 @@ class Com():
     NB_PROCESS = 0
 
     def __init__(self):
+        self.myId = Com.NB_PROCESS
         Com.NB_PROCESS += 1
-        
+
         self.lamport = 0
         self.mailbox = Mailbox()
 
@@ -23,12 +25,13 @@ class Com():
         return Com.NB_PROCESS
 
     def getMyId(self):
-        return 0
+        return self.myId
 
     # Cast
 
-    def broadcast(self, payload):
-        pass
+    def broadcast(self, message):
+        msg = Message(self.getMyId(), message)
+        PyBus.Instance().post(msg)
 
     def sendTo(self, payload, dest):
         msg = MessageTo(self.getMyId(), dest, payload)
