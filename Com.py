@@ -14,33 +14,33 @@ class Com():
     def inc_clock(self):
         self.lamport += 1
     
-    def getNbProcess():
+    def getNbProcess(self):
         return Com.NB_PROCESS
 
-    def getMyId():
+    def getMyId(self):
         return 0
 
     # Cast
 
-    def broadcast(message):
+    def broadcast(self, message):
         pass
 
-    def sendTo(message, dest):
+    def sendTo(self, message, dest):
         pass
 
-    def sendToSync(message, dest):
+    def sendToSync(self, message, dest):
         pass
 
-    def recevFromSync(source):
+    def recevFromSync(self, source):
         pass
 
-    def synchronize():
+    def synchronize(self):
         pass
 
     # Section Critique
 
-    def requestSC():
+    def requestSC(self):
         pass
 
-    def releaseSC():
+    def releaseSC(self):
         pass

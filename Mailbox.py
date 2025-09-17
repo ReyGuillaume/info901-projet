@@ -1,8 +1,8 @@
 from Message import Message
 
 class Mailbox():
-    def isEmpty():
+    def isEmpty(self):
         pass
 
-    def getMessage():
+    def getMessage(self):
         return Message(1, '')
