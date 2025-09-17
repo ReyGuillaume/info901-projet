@@ -1,7 +1,7 @@
 from Mailbox import Mailbox
 
 from pyeventbus3.pyeventbus3 import *
-from Message import Message, MessageTo
+from Message import Message, MessageTo, MessageToSync
 
 class Com():
     NB_PROCESS = 0
@@ -40,15 +40,17 @@ class Com():
         pass
 
     def sendToSync(self, message, dest):
-
         pass
 
     @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageTo)
-    def receive(self, message):
-        self.mailbox.addMessage(message)
+    def receiveFrom(self, message):
+        if self.getMyId() == message.getDestId():
+            self.mailbox.addMessage(message)
         
-    def recvFromSync(self, source):
-        pass
+    @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageToSync)
+    def recvFromSync(self, message, source):
+        if self.getMyId() == source:
+            self.mailbox.addMessage(message)
 
     def synchronize(self):
         pass

@@ -16,5 +16,8 @@ class MessageTo(Message):
     def __init__(self, sender, to_id, payload):
         Message.__init__(self, sender, payload)
         self.to_id = to_id
+    
+    def getDestId(self):
+        return self.to_id
 
 

@@ -31,7 +31,7 @@ class Process(Thread):
                 self.com.sendTo("j'appelle 2 et je te recontacte après", 1)
                 
                 self.com.sendToSync("J'ai laissé un message à 2, je le rappellerai après, on se sychronise tous et on attaque la partie ?", 2)
-                msg = self.com.recevFromSync(2)
+                self.com.recvFromSync(msg, 2)
                
                 self.com.sendToSync("2 est OK pour jouer, on se synchronise et c'est parti!",1)
                     
@@ -50,7 +50,7 @@ class Process(Thread):
             if self.name == "P1":
                 if not self.com.mailbox.isEmpty():
                     self.com.mailbox.getMessage()
-                    msg = self.com.recevFromSync(0)
+                    self.com.recvFromSync(msg, 0)
 
                     self.com.synchronize()
                     
@@ -64,7 +64,7 @@ class Process(Thread):
                     self.com.releaseSC()
                     
             if self.name == "P2":
-                msg = self.com.recevFromSync(0)
+                self.com.recvFromSync(msg, 0)
                 self.com.sendToSync("OK", 0)
 
                 self.com.synchronize()
