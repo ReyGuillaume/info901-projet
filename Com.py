@@ -5,13 +5,20 @@ class Com():
         self.lamport = 0
         self.mailbox = Mailbox()
 
+    # Utils
+
     def inc_clock():
         pass
     
     def getNbProcess():
-        pass
+        return 1
 
     def getMyId():
+        pass
+
+    # Cast
+
+    def broadcast(message):
         pass
 
     def sendTo(message, dest):
@@ -26,9 +33,10 @@ class Com():
     def synchronize():
         pass
 
+    # Section Critique
+
     def requestSC():
         pass
 
-
-
-
+    def releaseSC():
+        pass
