@@ -1,6 +1,7 @@
 from Mailbox import Mailbox
 
 from pyeventbus3.pyeventbus3 import *
+from Message import Message, MessageTo
 
 class Com():
     NB_PROCESS = 0
@@ -26,16 +27,21 @@ class Com():
 
     # Cast
 
-    def broadcast(self, message):
+    def broadcast(self, payload):
         pass
 
-    def sendTo(self, message, dest):
+    def sendTo(self, payload, dest):
+        msg = MessageTo(self.getMyId(), dest, payload)
+        print(self.name + " sendTo P" + str(dest) +
+              ": " + str(payload) )
+        PyBus.Instance().post(msg)
         pass
 
     def sendToSync(self, message, dest):
+
         pass
 
-    def recevFromSync(self, source):
+    def recvFromSync(self, source):
         pass
 
     def synchronize(self):
