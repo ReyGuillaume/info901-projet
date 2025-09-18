@@ -28,3 +28,10 @@ class MessageTo(Message):
 class MessageToSync(Message):
     def __init__(self, estampille, payload):
         Message.__init__(self, estampille, payload)
+
+class Token():
+    def __init__(self, owner):
+        self.owner = owner
+    
+    def getOwner(self):
+        return self.owner

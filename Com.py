@@ -1,7 +1,8 @@
 from Mailbox import Mailbox
+from enum import Enum
 
 from pyeventbus3.pyeventbus3 import *
-from Message import BroadcastMessage, MessageTo, MessageToSync
+from Message import BroadcastMessage, MessageTo, MessageToSync, Token
 
 class Com():
     NB_PROCESS = 0
@@ -9,11 +10,15 @@ class Com():
     def __init__(self):
         self.myId = Com.NB_PROCESS
         Com.NB_PROCESS += 1
-
+        
+        self.stateSC = StateSC.NULL
         self.lamport = 0
         self.mailbox = Mailbox()
 
         PyBus.Instance().register(self, self)
+
+        if self.getMyId() == 2:
+            self.sendTokenToNextProcess()
 
     # Utils
 
@@ -63,7 +68,34 @@ class Com():
     # Section Critique
 
     def requestSC(self):
-        pass
+        self.stateSC = StateSC.REQUEST
+        while self.stateSC == StateSC.SC:
+            continue
 
     def releaseSC(self):
-        pass
+        if self.stateSC != StateSC.SC:
+            return
+        
+        self.stateSC = StateSC.RELEASE
+        self.sendTokenToNextProcess()
+        self.stateSC = StateSC.NULL
+
+    @subscribe(threadMode = Mode.PARALLEL, onEvent=Token)
+    def onToken(self, token):
+        if token.getOwner() == self.getMyId():
+            if self.stateSC == StateSC.REQUEST:
+                self.stateSC = StateSC.SC
+            else:
+                self.sendTokenToNextProcess()
+
+    def sendTokenToNextProcess(self):
+        PyBus.Instance().post(Token(self.nextProcess()))
+
+    def nextProcess(self):
+        return (self.getMyId() + 1) % Com.NB_PROCESS
+
+class StateSC(Enum):
+    NULL = 0
+    REQUEST = 1
+    SC = 2
+    RELEASE = 3
