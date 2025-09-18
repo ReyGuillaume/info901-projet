@@ -52,3 +52,10 @@ class AckMessage:
 
     def getId(self):
         return self.msg_id
+
+class Token():
+    def __init__(self, owner):
+        self.owner = owner
+    
+    def getOwner(self):
+        return self.owner
