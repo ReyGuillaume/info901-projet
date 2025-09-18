@@ -1,9 +1,12 @@
 from Mailbox import Mailbox
-from Message import Message
 
 from pyeventbus3.pyeventbus3 import *
+<<<<<<< HEAD
 from Message import Message, MessageTo
 from threading import Event
+=======
+from Message import Message, BroadcastMessage, MessageTo, MessageToSync
+>>>>>>> 7ec2490bfe8de929bdc0fdd0316613a1dffcfff3
 
 class Com():
     NB_PROCESS = 0
@@ -31,7 +34,7 @@ class Com():
     # Cast
 
     def broadcast(self, message):
-        msg = Message(self.getMyId(), message)
+        msg = BroadcastMessage(self.lamport, self.getMyId(), message)
         PyBus.Instance().post(msg)
 
     def sendTo(self, payload, dest):
@@ -41,6 +44,7 @@ class Com():
         PyBus.Instance().post(msg)
         pass
 
+<<<<<<< HEAD
 
 
     def sendToSync(self, message, dest):
@@ -71,9 +75,25 @@ class Com():
             ack_event.set()
             # se désabonner après réception
             PyBus.Instance().unregister(handle_ack)
-
-    def recvFromSync(self, source):
+=======
+    def sendToSync(self, message, dest):
         pass
+>>>>>>> 7ec2490bfe8de929bdc0fdd0316613a1dffcfff3
+
+    @subscribe(threadMode = Mode.PARALLEL, onEvent=BroadcastMessage)
+    def onBroadcast(self, message):
+        if self.getMyId() != message.getSender():
+            self.mailbox.addMessage(message)
+
+    @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageTo)
+    def receiveFrom(self, message):
+        if self.getMyId() == message.getDestId():
+            self.mailbox.addMessage(message)
+        
+    @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageToSync)
+    def recvFromSync(self, message, source):
+        if self.getMyId() == source:
+            self.mailbox.addMessage(message)
 
     def synchronize(self):
         pass
