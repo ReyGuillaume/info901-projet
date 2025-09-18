@@ -45,6 +45,8 @@ class Com():
 
     def sendTo(self, payload, dest):
         msg = MessageTo(self.lamport, payload, self.getMyId(), dest)
+        print(str(self.getMyId()) + " sendTo P" + str(dest) +
+              ": " + str(payload) )
         PyBus.Instance().post(msg)
 
     def sendToSync(self, payload, dest, timeout=5):
@@ -65,17 +67,14 @@ class Com():
         return ok
 
     def recvFromSync(self, payload, source, timeout=10):
-        ev = self.pending_recv.get(source)
-        if ev is None:
-            ev = Event()
-            self.pending_recv[source] = ev
+        ev = self.pending_recv.setdefault(source, Event())
 
         ok = ev.wait(timeout=timeout)
         msg = self.received_sync_msgs.pop(source, None)
         self.pending_recv.pop(source, None)
 
-        if ok:
-            print(f"P{self.myId} recvFromSync -> received from P{source}: {msg.getPayload()}")
+        if ok and msg:
+            print(f"P{self.myId} recvFromSync -> received from P{source}: {payload}")
         else:
             print(f"P{self.myId} recvFromSync -> TIMEOUT waiting for P{source}")
 
@@ -106,6 +105,7 @@ class Com():
             # Répond avec un ACK pour le sender
             ack = AckMessage(self.myId, msg.getSender(), msg.getId())
             PyBus.Instance().post(ack)
+
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=AckMessage)
     def onAck(self, ack):
