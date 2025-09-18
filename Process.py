@@ -26,6 +26,7 @@ class Process(Thread):
         while self.alive:
             print(self.name + " Loop: " + str(loop))
             sleep(1)
+            msg = None
 
             if self.name == "P0":
                 self.com.sendTo("j'appelle 2 et je te recontacte après", 1)
