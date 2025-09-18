@@ -1,12 +1,9 @@
 from Mailbox import Mailbox
-
 from pyeventbus3.pyeventbus3 import *
-<<<<<<< HEAD
-from Message import Message, MessageTo
 from threading import Event
-=======
-from Message import Message, BroadcastMessage, MessageTo, MessageToSync
->>>>>>> 7ec2490bfe8de929bdc0fdd0316613a1dffcfff3
+from Message import BroadcastMessage, MessageTo, MessageToSync, AckMessage
+
+
 
 class Com():
     NB_PROCESS = 0
@@ -17,6 +14,8 @@ class Com():
 
         self.lamport = 0
         self.mailbox = Mailbox()
+
+        self.pending = {}  # msg_id -> Event
 
         PyBus.Instance().register(self, self)
 
@@ -39,48 +38,32 @@ class Com():
 
     def sendTo(self, payload, dest):
         msg = MessageTo(self.getMyId(), dest, payload)
-        print(self.name + " sendTo P" + str(dest) +
+        print("sendTo P" + str(dest) +
               ": " + str(payload) )
         PyBus.Instance().post(msg)
-        pass
 
-<<<<<<< HEAD
+    def sendToSync(self, payload, dest, timeout=5):
+        # Création du message
+        msg = MessageToSync(self.getMyId(), dest, payload)
+        event = Event()
+        self.pending[msg.getId()] = event
 
-
-    def sendToSync(self, message, dest):
-        # créer un objet Event pour attendre la réponse
-        ack_event = Event()
-        response_container = {}
-
-        PyBus.Instance().register(handle_ack, handle_ack)
-
-        # envoyer le message
-        msg = MessageTo(self.getMyId(), dest, message)
-        print(f"{self.getMyId()} sendToSync P{dest}: {message}")
+        print(f"P{self.myId} sendToSync P{dest}: {payload} (msg_id={msg.getId()})")
         PyBus.Instance().post(msg)
 
-        # attendre la réponse
-        ack_event.wait(timeout=5)
+        ok = event.wait(timeout=timeout)
+        if not ok:
+            print(f"P{self.myId} sendToSync -> TIMEOUT for msg_id={msg.getId()}")
+        else:
+            print(f"P{self.myId} sendToSync -> ACK received for msg_id={msg.getId()}")
 
-        return response_container.get('msg', None)
+        # Nettoyage
+        self.pending.pop(msg.getId(), None)
+        return ok
 
+    # Event Handlers
 
-    # handler pour réception de l'ack
-    @subscribe(threadMode=Mode.PARALLEL, onEvent=MessageTo)
-    def handle_ack_sync(msg):
-        if msg.getReceiver() == self.getMyId() and msg.getSender() == dest:
-            # stocker la réponse
-            response_container['msg'] = msg
-            # débloquer le wait
-            ack_event.set()
-            # se désabonner après réception
-            PyBus.Instance().unregister(handle_ack)
-=======
-    def sendToSync(self, message, dest):
-        pass
->>>>>>> 7ec2490bfe8de929bdc0fdd0316613a1dffcfff3
-
-    @subscribe(threadMode = Mode.PARALLEL, onEvent=BroadcastMessage)
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastMessage)
     def onBroadcast(self, message):
         if self.getMyId() != message.getSender():
             self.mailbox.addMessage(message)
@@ -94,6 +77,9 @@ class Com():
     def recvFromSync(self, message, source):
         if self.getMyId() == source:
             self.mailbox.addMessage(message)
+            # envoyer un ACK
+            ack = AckMessage(self.getMyId(), message.getSender(), message.getId())
+            PyBus.Instance().post(ack)
 
     def synchronize(self):
         pass
@@ -105,3 +91,10 @@ class Com():
 
     def releaseSC(self):
         pass
+
+
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=AckMessage)
+    def onAck(self, ack):
+        if self.getMyId() == ack.getDestId():
+            if ack.getId() in self.pending:
+                self.pending[ack.getId()].set()

@@ -24,3 +24,39 @@ class MessageTo(Message):
     
     def getDestId(self):
         return self.to_id
+
+
+class MessageToSync:
+    def __init__(self, sender, dest, payload, msg_id=None):
+        self.sender = sender
+        self.dest = dest
+        self.payload = payload
+        self.msg_id = msg_id   
+
+    def getSender(self):
+        return self.sender
+
+    def getDestId(self):
+        return self.dest
+
+    def getPayload(self):
+        return self.payload
+
+    def getId(self):
+        return self.msg_id
+
+# Message d’acknowledgement
+class AckMessage:
+    def __init__(self, sender, dest, msg_id):
+        self.sender = sender
+        self.dest = dest
+        self.msg_id = msg_id
+
+    def getSender(self):
+        return self.sender
+
+    def getDestId(self):
+        return self.dest
+
+    def getId(self):
+        return self.msg_id
