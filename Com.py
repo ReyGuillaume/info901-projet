@@ -252,7 +252,7 @@ class Com():
 
     def requestSC(self):
         self.stateSC = StateSC.REQUEST
-        while self.stateSC == StateSC.SC:
+        while self.stateSC != StateSC.SC:
             continue
 
     def releaseSC(self):
@@ -260,16 +260,16 @@ class Com():
             return
         
         self.stateSC = StateSC.RELEASE
-        self.sendTokenToNextProcess()
-        self.stateSC = StateSC.NULL
 
     @subscribe(threadMode = Mode.PARALLEL, onEvent=Token)
     def onToken(self, token):
         if token.getOwner() == self.getMyId():
             if self.stateSC == StateSC.REQUEST:
                 self.stateSC = StateSC.SC
-            else:
-                self.sendTokenToNextProcess()
+            while self.stateSC == StateSC.SC:
+                continue
+            self.sendTokenToNextProcess()
+            self.stateSC = StateSC.NULL
 
     def sendTokenToNextProcess(self):
         PyBus.Instance().post(Token(self.nextProcess()))
