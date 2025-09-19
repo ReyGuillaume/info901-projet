@@ -19,6 +19,10 @@ class BroadcastMessage(Message):
     def __init__(self, estampille, payload, sender):
         Message.__init__(self, estampille, payload, sender)
 
+class BroadcastSyncMessage(BroadcastMessage):
+    def __init__(self, estampille, payload, sender):
+        BroadcastMessage.__init__(self, estampille, payload, sender)
+
 class SynchronizeMessage():
     def __init__(self):
         pass
@@ -56,6 +60,17 @@ class AckMessage:
 
     def getId(self):
         return self.msg_id
+
+class BroadcastSyncAckMessage():
+    def __init__(self, sender, dest):
+        self.sender = sender
+        self.dest = dest
+
+    def getSender(self):
+        return self.sender
+
+    def getDestId(self):
+        return self.dest
 
 class Token():
     def __init__(self, owner):

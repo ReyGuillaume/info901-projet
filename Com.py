@@ -3,7 +3,7 @@ from enum import Enum
 
 from pyeventbus3.pyeventbus3 import *
 from threading import Event
-from Message import BroadcastMessage, SynchronizeMessage, MessageTo, MessageToSync, AckMessage, Token
+from Message import *
 
 class Com():
     NB_PROCESS = 0
@@ -16,6 +16,8 @@ class Com():
         self.lamport = 0
         self.nbSynchronize = 0
         self.synchronizeEvent = Event()
+        self.nbSynchronizeBroadcastAck = 0
+        self.synchronizeBroadcastEvent = Event()
         self.mailbox = Mailbox()
 
         self.pending_send = {}
@@ -43,6 +45,11 @@ class Com():
     def broadcast(self, message):
         msg = BroadcastMessage(self.lamport, message, self.getMyId())
         PyBus.Instance().post(msg)
+
+    def broadcastSync(self, message):
+        msg = BroadcastSyncMessage(self.lamport, message, self.getMyId())
+        PyBus.Instance().post(msg)
+        self.synchronizeBroadcastEvent.wait()
 
     def sendTo(self, payload, dest):
         msg = MessageTo(self.lamport, payload, self.getMyId(), dest)
@@ -90,6 +97,14 @@ class Com():
         if self.getMyId() != message.getSender():
             self.mailbox.addMessage(message)
 
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastSyncMessage)
+    def onBroadcastSynchronize(self, message):
+        if self.getMyId() != message.getSender():
+            self.mailbox.addMessage(message)
+            
+            ack = BroadcastSyncAckMessage(self.myId, message.getSender())
+            PyBus.Instance().post(ack)
+
     @subscribe(threadMode=Mode.PARALLEL, onEvent=SynchronizeMessage)
     def onSynchronize(self, _):
         self.nbSynchronize += 1
@@ -122,6 +137,16 @@ class Com():
             ev = self.pending_send.get(ack.getId())
             if ev:
                 ev.set()
+    
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastSyncAckMessage)
+    def onAck(self, ack):
+        if ack.getDestId() == self.myId:
+            self.nbSynchronizeBroadcastAck += 1
+            
+            if self.nbSynchronizeBroadcastAck == Com.NB_PROCESS - 1:
+                self.synchronizeBroadcastEvent.set()
+                self.nbSynchronizeBroadcastAck = 0
+
 
     def synchronize(self):
         msg = SynchronizeMessage()
