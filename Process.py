@@ -56,6 +56,7 @@ class Process(Thread):
 
 
             if self.com.getMyId() == 1:
+                sleep(0.5)
                 if not self.com.mailbox.isEmpty():
                     self.com.mailbox.getMessage()
                     self.com.recvFromSync(msg, 0)

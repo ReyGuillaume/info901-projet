@@ -128,21 +128,25 @@ class Com():
 
     
     def broadcast(self, message):
+        self.inc_clock()
         msg = BroadcastMessage(self.lamport, message, self.getMyId())
         PyBus.Instance().post(msg)
 
     def broadcastSync(self, message):
+        self.inc_clock()
         msg = BroadcastSyncMessage(self.lamport, message, self.getMyId())
         PyBus.Instance().post(msg)
         self.synchronizeBroadcastEvent.wait()
 
     def sendTo(self, payload, dest):
+        self.inc_clock()
         msg = MessageTo(self.lamport, payload, self.getMyId(), dest)
         print(str(self.getMyId()) + " sendTo P" + str(dest) +
               ": " + str(payload) )
         PyBus.Instance().post(msg)
 
     def sendToSync(self, payload, dest, timeout=5):
+        self.inc_clock()
         msg = MessageToSync(self.lamport, payload, self.myId, dest)
         event = Event()
         self.pending_send[msg.getId()] = event
@@ -160,6 +164,7 @@ class Com():
         return ok
 
     def recvFromSync(self, payload, source, timeout=10):
+        self.inc_clock()
 
         print(f"P{self.myId} recvFromSync -> waiting for message from P{source}")
 
@@ -193,11 +198,19 @@ class Com():
     @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastMessage)
     def onBroadcast(self, message):
         if self.getMyId() != message.getSender():
+            received_timestamp = message.getEstampille()
+            with threading.Lock():
+                self.lamport = max(self.lamport, received_timestamp) + 1
+
             self.mailbox.addMessage(message)
 
     @subscribe(threadMode=Mode.PARALLEL, onEvent=BroadcastSyncMessage)
     def onBroadcastSynchronize(self, message):
         if self.getMyId() != message.getSender():
+            received_timestamp = message.getEstampille()
+            with threading.Lock():
+                self.lamport = max(self.lamport, received_timestamp) + 1
+
             self.mailbox.addMessage(message)
             
             ack = BroadcastSyncAckMessage(self.myId, message.getSender())
@@ -216,6 +229,10 @@ class Com():
     @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageTo)
     def receiveFrom(self, message):
         if self.getMyId() == message.getDestId():
+            received_timestamp = message.getEstampille()
+            with threading.Lock():
+                self.lamport = max(self.lamport, received_timestamp) + 1
+
             self.mailbox.addMessage(message)
         
     @subscribe(threadMode=Mode.PARALLEL, onEvent=MessageToSync)
@@ -223,7 +240,11 @@ class Com():
         if msg.getDestId() == self.myId:
             with threading.Lock():
                 self.received_sync_msgs[msg.getSender()] = msg
-                
+
+                received_timestamp = msg.getEstampille()
+                with threading.Lock():
+                    self.lamport = max(self.lamport, received_timestamp) + 1
+        
                 if msg.getSender() in self.pending_recv:
                     self.pending_recv[msg.getSender()].set()
             
