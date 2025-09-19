@@ -35,6 +35,12 @@ class Com():
 
         PyBus.Instance().register(self, self)                                            
 
+        self.last_heartbeat = {}
+        self.alive = True
+
+        self.heartbeat_thread = Thread(target=self.heartbeat_loop, daemon=True)
+        self.monitor_thread = Thread(target=self.monitor_loop, daemon=True)
+                                        
         if self.getMyId() == 2:
             self.sendTokenToNextProcess()
 
@@ -71,6 +77,11 @@ class Com():
                 sorted_values = sorted(all_values)
                 self.myId = sorted_values.index(self.my_value)
                 Com.NB_PROCESS = len(all_values)
+
+                self.heartbeat_thread.start()
+                self.monitor_thread.start()
+                self.last_heartbeat[self.myId] = time.time()
+
                 return self.myId
             else:
                 if self.my_value in duplicates:
@@ -79,6 +90,37 @@ class Com():
                         if new_value not in all_values:
                             self.my_value = new_value
                             break
+                            
+
+    def heartbeat_loop(self):
+        while self.alive:
+            hb = HeartbeatMessage(self.myId, time.time())
+            PyBus.Instance().post(hb)
+            time.sleep(2)
+
+    def monitor_loop(self):
+        while self.alive:
+            now = time.time()
+            dead = []
+            for pid, ts in list(self.last_heartbeat.items()):
+                if pid != self.myId and now - ts > 5:
+                    dead.append(pid)
+
+            for pid in dead:
+                print(f"P{self.myId} detected that P{pid} is dead")
+                self.handle_process_death(pid)
+
+            time.sleep(1)
+
+    def handle_process_death(self, dead_id):
+        if dead_id in self.last_heartbeat:
+            del self.last_heartbeat[dead_id]
+
+        Com.NB_PROCESS -= 1
+
+        if self.myId > dead_id:
+            self.myId -= 1
+            print(f"P{self.myId} updated its ID after death of P{dead_id}")
 
     
     def broadcast(self, message):
@@ -191,6 +233,11 @@ class Com():
         if msg.sender != self.tmp_id:
             self.random_draws[msg.sender] = msg.value
             self.rand_event.set()
+
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=HeartbeatMessage)
+    def onHeartbeat(self, msg):
+        self.last_heartbeat[msg.sender] = msg.timestamp
+
 
     def synchronize(self):
         msg = SynchronizeMessage()
