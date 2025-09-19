@@ -27,6 +27,7 @@ class Process(Thread):
         sleep(1)
         self.com.elect_id(timeout=1.0)
         print(f"{self.name} got electedId={self.com.myId}")
+        self.name = "P" + str(self.com.getMyId())
 
         loop = 0
         while self.alive:
@@ -34,7 +35,7 @@ class Process(Thread):
             sleep(1)
             msg = None
 
-            if self.name == "P0":
+            if self.com.getMyId() == 0:
                 self.com.sendTo("j'appelle 2 et je te recontacte après", 1)
                 
                 self.com.sendToSync("J'ai laissé un message à 2, je le rappellerai après, on se sychronise tous et on attaque la partie ?", 2)
@@ -54,7 +55,7 @@ class Process(Thread):
                 self.com.releaseSC()
 
 
-            if self.name == "P1":
+            if self.com.getMyId() == 1:
                 if not self.com.mailbox.isEmpty():
                     self.com.mailbox.getMessage()
                     self.com.recvFromSync(msg, 0)
@@ -70,7 +71,7 @@ class Process(Thread):
                         print(str(msg.getSender())+" à eu le jeton en premier")
                     self.com.releaseSC()
                     
-            if self.name == "P2":
+            if self.com.getMyId() == 2:
                 self.com.recvFromSync(msg, 0)
                 self.com.sendToSync("OK", 0)
 

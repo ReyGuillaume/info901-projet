@@ -1,8 +1,10 @@
 from Mailbox import Mailbox
 from enum import Enum
 import random
+import uuid
 from pyeventbus3.pyeventbus3 import *
 from threading import Event, Thread
+import threading
 from Message import *
 import time
 from time import sleep
@@ -40,15 +42,15 @@ class Com():
 
         self.heartbeat_thread = Thread(target=self.heartbeat_loop, daemon=True)
         self.monitor_thread = Thread(target=self.monitor_loop, daemon=True)
-                                        
-        if self.getMyId() == 2:
-            self.sendTokenToNextProcess()
+
 
     # Utils
 
     def inc_clock(self):
-        self.lamport += 1
-    
+        with threading.Lock():
+            self.lamport += 1
+            return self.lamport
+        
     def getNbProcess(self):
         return Com.NB_PROCESS
 
@@ -82,6 +84,8 @@ class Com():
                 self.monitor_thread.start()
                 self.last_heartbeat[self.myId] = time.time()
 
+                self.initialize_token()
+                
                 return self.myId
             else:
                 if self.my_value in duplicates:
@@ -156,6 +160,14 @@ class Com():
         return ok
 
     def recvFromSync(self, payload, source, timeout=10):
+
+        print(f"P{self.myId} recvFromSync -> waiting for message from P{source}")
+
+        if source in self.received_sync_msgs:
+            msg = self.received_sync_msgs.pop(source)
+            print(f"P{self.myId} recvFromSync -> found cached message from P{source}: {msg.getPayload()}")
+            return msg
+
         ev = self.pending_recv.setdefault(source, Event())
 
         ok = ev.wait(timeout=timeout)
@@ -163,11 +175,16 @@ class Com():
         self.pending_recv.pop(source, None)
 
         if ok and msg:
-            print(f"P{self.myId} recvFromSync -> received from P{source}: {payload}")
+            print(f"P{self.myId} recvFromSync -> received from P{source}: {msg.getPayload()}")
+            
+            if payload and msg.getPayload() != payload:
+                print(f"P{self.myId} recvFromSync -> WARNING: expected '{payload}' but got '{msg.getPayload()}'")
+            
+            return msg
         else:
             print(f"P{self.myId} recvFromSync -> TIMEOUT waiting for P{source}")
+            return None
 
-        return msg
 
 
 
@@ -189,8 +206,10 @@ class Com():
     @subscribe(threadMode=Mode.PARALLEL, onEvent=SynchronizeMessage)
     def onSynchronize(self, _):
         self.nbSynchronize += 1
-
+        print(f"P{self.myId} onSynchronize: {self.nbSynchronize}/{Com.NB_PROCESS}")
+        
         if self.nbSynchronize == Com.NB_PROCESS:
+            print(f"P{self.myId} releasing synchronization barrier!")
             self.synchronizeEvent.set()
             self.nbSynchronize = 0
 
@@ -202,12 +221,12 @@ class Com():
     @subscribe(threadMode=Mode.PARALLEL, onEvent=MessageToSync)
     def onSyncMsg(self, msg):
         if msg.getDestId() == self.myId:
-            self.received_sync_msgs[msg.getSender()] = msg
-            # Déclenche le Event de recvFromSync
-            ev = self.pending_recv.get(msg.getSender())
-            if ev:
-                ev.set()
-            # Répond avec un ACK pour le sender
+            with threading.Lock():
+                self.received_sync_msgs[msg.getSender()] = msg
+                
+                if msg.getSender() in self.pending_recv:
+                    self.pending_recv[msg.getSender()].set()
+            
             ack = AckMessage(self.myId, msg.getSender(), msg.getId())
             PyBus.Instance().post(ack)
 
@@ -240,13 +259,16 @@ class Com():
 
 
     def synchronize(self):
+        print(f"P{self.myId} calling synchronize() - posting SynchronizeMessage")
         msg = SynchronizeMessage()
         PyBus.Instance().post(msg)
+        
+        print(f"P{self.myId} waiting for synchronization barrier...")
         self.synchronizeEvent.wait()
+        
+        print(f"P{self.myId} passed synchronization barrier!")
 
-        if self.nbSynchronize == Com.NB_PROCESS:
-            self.synchronizeEvent.set()
-            self.nbSynchronize = 0
+        self.synchronizeEvent.clear()
 
     # Section Critique
 
@@ -277,6 +299,10 @@ class Com():
     def nextProcess(self):
         return (self.getMyId() + 1) % Com.NB_PROCESS
 
+    def initialize_token(self):
+        if self.myId == Com.NB_PROCESS - 1:
+            print(f"P{self.myId} initializing token ring")
+            self.sendTokenToNextProcess()
 
 
 
