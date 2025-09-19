@@ -22,6 +22,12 @@ class Process(Thread):
     
 
     def run(self):
+
+        print(f"{self.name} launching election...")
+        sleep(1)
+        self.com.elect_id(timeout=1.0)
+        print(f"{self.name} got electedId={self.com.myId}")
+
         loop = 0
         while self.alive:
             print(self.name + " Loop: " + str(loop))

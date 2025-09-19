@@ -59,3 +59,13 @@ class Token():
     
     def getOwner(self):
         return self.owner
+
+class RandDrawMessage:
+    def __init__(self, sender, value):
+        self.sender = sender
+        self.value = value
+
+class HeartbeatMessage:
+    def __init__(self, sender, timestamp):
+        self.sender = sender
+        self.timestamp = timestamp

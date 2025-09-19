@@ -1,17 +1,19 @@
 from Mailbox import Mailbox
 from enum import Enum
-
+import random
 from pyeventbus3.pyeventbus3 import *
-from threading import Event
-from Message import BroadcastMessage, MessageTo, MessageToSync, AckMessage, Token
+from threading import Event, Thread
+from Message import *
+import time
+from time import sleep
+
+M = 10000 
 
 class Com():
     NB_PROCESS = 0
 
     def __init__(self):
-        self.myId = Com.NB_PROCESS
-        Com.NB_PROCESS += 1
-        
+
         self.stateSC = StateSC.NULL
         self.lamport = 0
         self.mailbox = Mailbox()
@@ -20,8 +22,14 @@ class Com():
         self.pending_recv = {}
         self.received_sync_msgs = {}
 
+        self.my_value = None
+        self.tmp_id = str(uuid.uuid4())
 
-        PyBus.Instance().register(self, self)
+        self.random_draws = {}
+        self.rand_event = Event()
+        self.myId = None
+
+        PyBus.Instance().register(self, self)                                            
 
         if self.getMyId() == 2:
             self.sendTokenToNextProcess()
@@ -39,6 +47,36 @@ class Com():
 
     # Cast
 
+    def elect_id(self, timeout=2.0):
+        while True:
+            if self.my_value is None:
+                self.my_value = random.randint(0, M)
+
+            PyBus.Instance().post(RandDrawMessage(self.tmp_id, self.my_value))
+
+            start = time.time()
+            while time.time() - start < timeout:
+                self.rand_event.wait(timeout=0.1)
+                self.rand_event.clear()
+
+            all_values = list(self.random_draws.values()) + [self.my_value]
+
+            duplicates = [v for v in all_values if all_values.count(v) > 1]
+
+            if not duplicates:
+                sorted_values = sorted(all_values)
+                self.myId = sorted_values.index(self.my_value)
+                Com.NB_PROCESS = len(all_values)
+                return self.myId
+            else:
+                if self.my_value in duplicates:
+                    while True:
+                        new_value = random.randint(0, M)
+                        if new_value not in all_values:
+                            self.my_value = new_value
+                            break
+
+    
     def broadcast(self, message):
         msg = BroadcastMessage(self.lamport, message, self.getMyId())
         PyBus.Instance().post(msg)
@@ -114,6 +152,12 @@ class Com():
             if ev:
                 ev.set()
 
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=RandDrawMessage)
+    def onRandDraw(self, msg):
+        if msg.sender != self.tmp_id:
+            self.random_draws[msg.sender] = msg.value
+            self.rand_event.set()
+
     def synchronize(self):
         pass
 
@@ -145,6 +189,9 @@ class Com():
 
     def nextProcess(self):
         return (self.getMyId() + 1) % Com.NB_PROCESS
+
+
+
 
 class StateSC(Enum):
     NULL = 0
