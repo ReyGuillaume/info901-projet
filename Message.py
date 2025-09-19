@@ -19,6 +19,10 @@ class BroadcastMessage(Message):
     def __init__(self, estampille, payload, sender):
         Message.__init__(self, estampille, payload, sender)
 
+class SynchronizeMessage():
+    def __init__(self):
+        pass
+
 class MessageTo(Message):
     def __init__(self, estampille, payload, sender, to_id):
         Message.__init__(self, estampille, payload, sender)

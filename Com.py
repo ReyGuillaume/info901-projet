@@ -3,7 +3,7 @@ from enum import Enum
 
 from pyeventbus3.pyeventbus3 import *
 from threading import Event
-from Message import BroadcastMessage, MessageTo, MessageToSync, AckMessage, Token
+from Message import BroadcastMessage, SynchronizeMessage, MessageTo, MessageToSync, AckMessage, Token
 
 class Com():
     NB_PROCESS = 0
@@ -14,12 +14,13 @@ class Com():
         
         self.stateSC = StateSC.NULL
         self.lamport = 0
+        self.nbSynchronize = 0
+        self.synchronizeEvent = Event()
         self.mailbox = Mailbox()
 
         self.pending_send = {}
         self.pending_recv = {}
         self.received_sync_msgs = {}
-
 
         PyBus.Instance().register(self, self)
 
@@ -89,6 +90,14 @@ class Com():
         if self.getMyId() != message.getSender():
             self.mailbox.addMessage(message)
 
+    @subscribe(threadMode=Mode.PARALLEL, onEvent=SynchronizeMessage)
+    def onSynchronize(self, _):
+        self.nbSynchronize += 1
+
+        if self.nbSynchronize == Com.NB_PROCESS:
+            self.synchronizeEvent.set()
+            self.nbSynchronize = 0
+
     @subscribe(threadMode = Mode.PARALLEL, onEvent=MessageTo)
     def receiveFrom(self, message):
         if self.getMyId() == message.getDestId():
@@ -115,7 +124,13 @@ class Com():
                 ev.set()
 
     def synchronize(self):
-        pass
+        msg = SynchronizeMessage()
+        PyBus.Instance().post(msg)
+        self.synchronizeEvent.wait()
+
+        if self.nbSynchronize == Com.NB_PROCESS:
+            self.synchronizeEvent.set()
+            self.nbSynchronize = 0
 
     # Section Critique
 
